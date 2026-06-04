@@ -451,6 +451,51 @@ def fig8_reliability_diagram(y_pred, y_true, interval_widths, mc_std, n_bins=10,
 
 
 # ============================================================
+# Figure 9: UBG Confidence vs Conformal Interval Width
+# ============================================================
+
+def fig9_ubg_confidence_vs_width(conf_text, conf_audio, interval_widths, sentiment_labels):
+    """Dual scatter: UBG confidence vs adaptive conformal width.
+
+    Left: conf_text vs width. Right: conf_audio vs width.
+    Colored by sentiment polarity. Annotated with correlation coefficients.
+    """
+    _ensure_dir()
+    fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
+
+    w = np.asarray(interval_widths).flatten()
+    ct = np.asarray(conf_text).flatten()
+    ca = np.asarray(conf_audio).flatten()
+    sent_colors = {'negative': COLORS['neg'], 'neutral': COLORS['neutral'], 'positive': COLORS['pos']}
+
+    for ax, conf, name, corr_val in [
+        (axes[0], ct, 'Text', np.corrcoef(ct, w)[0, 1]),
+        (axes[1], ca, 'Audio', np.corrcoef(ca, w)[0, 1]),
+    ]:
+        for sent in ['negative', 'neutral', 'positive']:
+            mask = np.array(sentiment_labels) == sent
+            if mask.sum() == 0:
+                continue
+            ax.scatter(conf[mask], w[mask], c=sent_colors[sent],
+                       label=sent, alpha=0.4, s=10, edgecolors='none')
+
+        # Linear fit
+        z = np.polyfit(conf, w, 1)
+        x_line = np.linspace(conf.min(), conf.max(), 100)
+        ax.plot(x_line, np.polyval(z, x_line), 'k-', linewidth=1.5, alpha=0.5,
+                label=f'Linear fit (r={corr_val:.3f})')
+
+        ax.set_xlabel(f'{name} Confidence', fontsize=10)
+        ax.set_ylabel('Adaptive Interval Width', fontsize=10)
+        ax.set_title(f'{name} Confidence vs Width', fontsize=11)
+        ax.legend(fontsize=7)
+        ax.grid(True, alpha=0.2)
+
+    fig.suptitle('Figure 9: UBG Confidence — Conformal Width Correlation', fontsize=12, y=1.01)
+    _save('fig9_ubg_confidence_vs_width.png')
+
+
+# ============================================================
 # Master: save all figures
 # ============================================================
 
@@ -498,5 +543,9 @@ def save_all_figures(viz_data):
     if 'reliability' in viz_data:
         yp, yt, w, std = viz_data['reliability']
         fig8_reliability_diagram(yp, yt, w, std)
+
+    if 'ubg_width_corr' in viz_data:
+        ct, ca, aw, sl = viz_data['ubg_width_corr']
+        fig9_ubg_confidence_vs_width(ct, ca, aw, sl)
 
     print("--- All figures saved to figures/ ---")

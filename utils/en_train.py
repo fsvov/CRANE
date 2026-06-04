@@ -539,6 +539,15 @@ def EnRun(config):
     print(f"  Negative samples: conf_text={np.mean(conf_t[neg_mask]):.4f}  conf_audio={np.mean(conf_a[neg_mask]):.4f}")
     print(f"  Positive samples: conf_text={np.mean(conf_t[pos_mask]):.4f}  conf_audio={np.mean(conf_a[pos_mask]):.4f}")
 
+    # UBG confidence vs conformal width correlation
+    adapt_w_test = (adapt_up - adapt_lo).flatten()
+    corr_ct_w = np.corrcoef(conf_t, adapt_w_test)[0, 1]
+    corr_ca_w = np.corrcoef(conf_a, adapt_w_test)[0, 1]
+    print(f"\n  UBG confidence vs Adaptive Width:")
+    print(f"  Corr(conf_text, width) = {corr_ct_w:.4f}")
+    print(f"  Corr(conf_audio, width) = {corr_ca_w:.4f}")
+    viz['ubg_width_corr'] = (conf_t, conf_a, adapt_w_test, conf_lab)
+
     # =====================================================
     # 9. Deep Ensemble (if available)
     # =====================================================
