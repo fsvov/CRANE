@@ -13,6 +13,8 @@ from utils.conformal import (SplitConformalPredictor, MCAdaptiveConformalPredict
                               classification_set_metrics, classification_conditional_by_sentiment,
                               map_to_7class)
 from collections import defaultdict
+from utils.visualization import save_all_figures
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
@@ -634,6 +636,124 @@ def EnRun(config):
     for label, info in cond.items():
         print(f"  {label:<10}  Count={info['count']:>4}  "
               f"Coverage={info['coverage']:.4f}  Avg_Set_Size={info['avg_size']:.2f}")
+
+    # =====================================================
+    # Collect visualization data
+    # =====================================================
+    from utils.conformal import compute_coverage, compute_interval_width, compute_interval_score
+
+    viz = {}
+
+    # --- Figure 1: Coverage-Width trade-off ---
+    cw_results = {}
+    for name, cp, extra in [
+        ('Split', split_cp, {}),
+        ('Adaptive', adaptive_cp, {'mc_std': mc_std_test}),
+        ('Mondrian', mondrian_cp, {'groups': test_groups}),
+        ('MVE', mve_cp, {'mc_std': mve_std_test}),
+    ]:
+        pts = {}
+        for a in alphas:
+            if name == 'Mondrian':
+                lo, up = cp.predict(y_pred_test if name != 'MVE' else mve_mean_test,
+                                    extra.get('groups', test_groups), a)
+            elif name == 'MVE':
+                lo, up = cp.predict(mve_mean_test, mve_std_test, a)
+            else:
+                lo, up = cp.predict(y_pred_test, **{k: v for k, v in extra.items()
+                                     if k != 'groups'})
+            cov = compute_coverage(y_true_test.flatten(), lo.flatten(), up.flatten())
+            _, mw = compute_interval_width(lo.flatten(), up.flatten())
+            pts[a] = (cov, mw)
+        cw_results[name] = pts
+
+    # MC RAW
+    raw_pts = {}
+    for a in alphas:
+        lo, up = mc_dropout_interval(y_pred_test, mc_std_test, a)
+        cov = compute_coverage(y_true_test.flatten(), lo.flatten(), up.flatten())
+        _, mw = compute_interval_width(lo.flatten(), up.flatten())
+        raw_pts[a] = (cov, mw)
+    cw_results['MC RAW'] = raw_pts
+
+    # Ensemble (if available)
+    if ensemble_models_exist:
+        ens_pts = {}
+        for a in alphas:
+            lo, up = ens_cp.predict(ens_mean_test, ens_std_test, a)
+            cov = compute_coverage(y_true_test.flatten(), lo.flatten(), up.flatten())
+            _, mw = compute_interval_width(lo.flatten(), up.flatten())
+            ens_pts[a] = (cov, mw)
+        cw_results['Ensemble'] = ens_pts
+
+    viz['coverage_width'] = {
+        'methods': list(cw_results.keys()),
+        'alphas': alphas,
+        'results': cw_results,
+    }
+
+    # --- Figure 2: Calibration sensitivity (recompute & store) ---
+    cal_cov_split, cal_cov_adapt, cal_w_split, cal_w_adapt, cal_n = [], [], [], [], []
+    for n in cal_sizes:
+        if n > n_cal_full:
+            continue
+        idx = np.random.RandomState(42).choice(n_cal_full, n, replace=False)
+        sc_tmp = SplitConformalPredictor()
+        sc_tmp.calibrate(y_true_cal[idx], y_pred_cal[idx])
+        sl, su = sc_tmp.predict(y_pred_test, 0.10)
+        ac_tmp = MCAdaptiveConformalPredictor()
+        ac_tmp.calibrate(y_true_cal[idx], y_pred_cal[idx], mc_std_cal[idx])
+        al, au = ac_tmp.predict(y_pred_test, mc_std_test, 0.10)
+        cal_n.append(n)
+        cal_cov_split.append(compute_coverage(y_true_test.flatten(), sl.flatten(), su.flatten()))
+        cal_cov_adapt.append(compute_coverage(y_true_test.flatten(), al.flatten(), au.flatten()))
+        _, sw = compute_interval_width(sl.flatten(), su.flatten())
+        _, amw = compute_interval_width(al.flatten(), au.flatten())
+        cal_w_split.append(sw)
+        cal_w_adapt.append(amw)
+
+    viz['calibration_sensitivity'] = {
+        'n_cal': cal_n, 'split_cov': cal_cov_split, 'adapt_cov': cal_cov_adapt,
+        'split_w': cal_w_split, 'adapt_mw': cal_w_adapt,
+    }
+
+    # --- Figure 3: UBG confidence ---
+    viz['ubg_confidence'] = (conf_t, conf_a,
+                              ['negative' if l < 0 else 'neutral' if l == 0 else 'positive'
+                               for l in conf_lab])
+
+    # --- Figure 4: Residual distribution ---
+    cal_residuals = np.abs(y_true_cal.flatten() - y_pred_cal.flatten())
+    test_residuals = np.abs(y_true_test.flatten() - y_pred_test.flatten())
+    sl, su = split_cp.predict(y_pred_test, 0.10)
+    q_val = (su[0] - sl[0]) / 2  # half-width
+    viz['residuals'] = (cal_residuals, test_residuals, q_val, 0.10)
+
+    # --- Figure 5: Conditional coverage ---
+    adapt_lo, adapt_up = adaptive_cp.predict(y_pred_test, mc_std_test, 0.10)
+    from utils.conformal import conditional_coverage_by_sentiment, conditional_coverage_by_bucket
+    sent_cond = conditional_coverage_by_sentiment(y_true_test, y_pred_test, adapt_lo, adapt_up)
+    buck_cond = conditional_coverage_by_bucket(y_pred_test, y_true_test, adapt_lo, adapt_up)
+    viz['conditional_coverage'] = (sent_cond, buck_cond)
+
+    # --- Figure 6: Width vs |ŷ| ---
+    adapt_w = adapt_up - adapt_lo
+    covered = (y_true_test.flatten() >= adapt_lo.flatten()) & (y_true_test.flatten() <= adapt_up.flatten())
+    viz['width_vs_magnitude'] = (y_pred_test, adapt_w, covered, 0.10)
+
+    # --- Figure 7: Prediction set sizes ---
+    set_dists = {}
+    for a in alphas:
+        ps = cls_cp.predict(y_pred_test, a)
+        metrics = classification_set_metrics(y_true_test, ps)
+        set_dists[a] = metrics['size_distribution']
+    viz['prediction_sets'] = (set_dists, 0.10)
+
+    # --- Figure 8: Reliability diagram ---
+    viz['reliability'] = (y_pred_test, y_true_test, adapt_w, mc_std_test)
+
+    # Generate all figures
+    save_all_figures(viz)
 
     print("=" * 70)
 
