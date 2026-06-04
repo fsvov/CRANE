@@ -1,0 +1,43 @@
+# SLURM output logs
+*.out
+*.err
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Model checkpoints
+saved/
+saved_ensemble/
+*.pth
+*.pt
+*.ckpt
+
+# Data directory
+data/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.venv/
+venv/
+
+# Internal tools
+.omc/
+.claude/
+
+# Misc
+*.pdf
+*.png
+*.jpg
+research_plan.md
