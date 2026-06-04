@@ -15,11 +15,13 @@ FIGSIZE = (7, 5)
 FIGSIZE_WIDE = (10, 5)
 COLORS = {
     'split': '#3498db', 'adaptive': '#e74c3c', 'mondrian': '#9b59b6',
-    'mve': '#2ecc71', 'raw': '#95a5a6', 'ensemble': '#e67e22',
+    'mve': '#2ecc71', 'raw': '#e95a2b', 'ensemble': '#e67e22',
     'text': '#1abc9c', 'audio': '#f39c12', 'multi': '#e74c3c',
     'neg': '#e74c3c', 'neutral': '#f39c12', 'pos': '#2ecc71',
     'covered': '#2ecc71', 'missed': '#e74c3c',
 }
+SET_SIZE_COLORS = {1: '#3498db', 2: '#2ecc71', 3: '#f39c12', 4: '#e74c3c',
+                   5: '#9b59b6', 6: '#e67e22', 7: '#95a5a6'}
 SENTIMENT_NAMES = ['Negative', 'Neutral', 'Positive']
 
 
@@ -64,17 +66,23 @@ def fig1_coverage_width_tradeoff(data):
         widths = [pts[a][1] for a in alphas_sorted]
         mk = markers.get(method, 'o')
         clr = method_colors.get(method, '#333')
-        ax.plot(widths, covs, marker=mk, color=clr, label=method, markersize=8,
-                linewidth=1.5, markeredgewidth=0.5, markeredgecolor='white')
+        ms = 10 if method == 'MC RAW' else 8
+        lw = 2.0 if method == 'MC RAW' else 1.5
+        ax.plot(widths, covs, marker=mk, color=clr, label=method, markersize=ms,
+                linewidth=lw, markeredgewidth=0.5, markeredgecolor='white')
 
-        # Label α values next to points (only for first/last method to avoid clutter)
         if method == 'Adaptive':
             for a, c, w in zip(alphas_sorted, covs, widths):
-                offset = (0.075, 0.012) if a < 0.15 else (0.075, -0.03)
+                offset = (8, 2) if a < 0.15 else (8, -12)
                 ax.annotate(f'α={a:.2f}', (w, c), textcoords='offset points',
                             xytext=offset, fontsize=7, color=clr, alpha=0.8)
 
-    # Target line
+        if method == 'MC RAW':
+            ax.annotate('MC Dropout RAW\n(coverage ≈ 35%, no calibration)',
+                        xy=(widths[1], covs[1]), xytext=(widths[1] + 1.5, covs[1] + 0.15),
+                        fontsize=8, color=clr, fontweight='bold',
+                        arrowprops=dict(arrowstyle='->', color=clr, lw=1.2))
+
     for a in sorted(data['alphas']):
         ax.axhline(y=1 - a, color='gray', linestyle='--', alpha=0.2, linewidth=0.8)
 
@@ -111,8 +119,8 @@ def fig2_calibration_sensitivity(data):
     ax1.annotate('target 90%', xy=(nc[-1], 0.90), xytext=(10, 5), textcoords='offset points',
                  fontsize=8, color='gray')
 
-    ax2.plot(nc, data['split_w'], 's--', color=COLORS['split'], label='Split Width', markersize=5, alpha=0.6)
-    ax2.plot(nc, data['adapt_mw'], 'o--', color=COLORS['adaptive'], label='Adaptive Med Width', markersize=5, alpha=0.6)
+    ax2.plot(nc, data['split_w'], 's:', color=COLORS['split'], label='Split Width', markersize=5, alpha=0.6, linewidth=2)
+    ax2.plot(nc, data['adapt_mw'], 'o-.', color=COLORS['adaptive'], label='Adaptive Med Width', markersize=5, alpha=0.6, linewidth=2)
 
     ax1.set_xlabel('Calibration Set Size (n_cal)', fontsize=11)
     ax1.set_ylabel('Coverage', fontsize=11, color='#333')
@@ -259,7 +267,15 @@ def fig5_conditional_coverage_heatmap(sentiment_cond, bucket_cond):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
                 f'{c:.3f}\nn={cnt}', ha='center', fontsize=8)
     ax.set_xticks(range(len(buckets)))
-    ax.set_xticklabels([b.replace('[', '').replace(')', '') for b in buckets], fontsize=8, rotation=30)
+    _labels = []
+    for k, b in enumerate(buckets):
+        lb = b.replace('[', '')
+        if k == len(buckets) - 1:
+            lb = lb.replace(')', ']')
+        else:
+            lb = lb.replace(')', '')
+        _labels.append(lb)
+    ax.set_xticklabels(_labels, fontsize=8, rotation=30)
     ax.set_ylim(0, 1.05)
     ax.set_ylabel('Coverage', fontsize=10)
     ax.set_title('By Prediction Bucket', fontsize=11)
@@ -319,13 +335,17 @@ def fig7_prediction_set_sizes(size_distributions, alpha=0.10):
     _ensure_dir()
     fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
 
+    # Build consistent color map across both panels
+    all_sizes = sorted(set(s for d in size_distributions.values() for s in d.keys()))
+    size_color_map = {sz: SET_SIZE_COLORS.get(sz, '#888888') for sz in all_sizes}
+
     # Left: single α bar chart
     ax = axes[0]
     dist = size_distributions.get(alpha, {})
-    sizes = sorted(dist.keys())
-    counts = [dist[s] for s in sizes]
-    colors_b = [COLORS['pos'] if s <= 2 else COLORS['neutral'] if s <= 4 else COLORS['neg'] for s in sizes]
-    bars = ax.bar([str(s) for s in sizes], counts, color=colors_b, edgecolor='white')
+    sizes_l = sorted(dist.keys())
+    counts = [dist[s] for s in sizes_l]
+    colors_l = [size_color_map[s] for s in sizes_l]
+    bars = ax.bar([str(s) for s in sizes_l], counts, color=colors_l, edgecolor='white')
     for bar, cnt in zip(bars, counts):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1, str(cnt), ha='center', fontsize=9)
     ax.set_xlabel('Prediction Set Size', fontsize=10)
@@ -336,12 +356,12 @@ def fig7_prediction_set_sizes(size_distributions, alpha=0.10):
     # Right: stacked bar across α
     ax = axes[1]
     all_alphas = sorted(size_distributions.keys())
-    all_sizes = sorted(set(s for d in size_distributions.values() for s in d.keys()))
     bottom = np.zeros(len(all_alphas))
     alpha_labels = [f'{a:.2f}' for a in all_alphas]
     for sz in all_sizes:
         vals = [size_distributions[a].get(sz, 0) for a in all_alphas]
-        ax.bar(alpha_labels, vals, bottom=bottom, label=f'Size={sz}', alpha=0.8)
+        ax.bar(alpha_labels, vals, bottom=bottom, label=f'Size={sz}',
+               color=size_color_map[sz], alpha=0.85, edgecolor='white')
         bottom += np.array(vals)
     ax.set_xlabel('Significance Level α', fontsize=10)
     ax.set_ylabel('Number of Samples', fontsize=10)
@@ -359,7 +379,7 @@ def fig7_prediction_set_sizes(size_distributions, alpha=0.10):
 def fig8_reliability_diagram(y_pred, y_true, interval_widths, mc_std, n_bins=10, alpha=0.10):
     """Reliability diagram: binned observed MAE vs predicted uncertainty.
 
-    Left: Observed MAE vs binned MC σ.
+    Left: Observed MAE vs binned MC σ with linear fit.
     Right: Coverage vs bin.
 
     Args:
@@ -380,10 +400,12 @@ def fig8_reliability_diagram(y_pred, y_true, interval_widths, mc_std, n_bins=10,
     # Bin by MC std
     bin_edges = np.percentile(std, np.linspace(0, 100, n_bins + 1))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    mae_binned, cov_binned = [], []
+    mae_binned, cov_binned, bin_n = [], [], []
     for i in range(n_bins):
         mask = (std >= bin_edges[i]) & (std < bin_edges[i + 1])
-        if mask.sum() == 0:
+        n_b = mask.sum()
+        bin_n.append(n_b)
+        if n_b == 0:
             mae_binned.append(0)
             cov_binned.append(0)
         else:
@@ -391,25 +413,37 @@ def fig8_reliability_diagram(y_pred, y_true, interval_widths, mc_std, n_bins=10,
             cov_binned.append(np.mean((yt[mask] >= yp[mask] - w[mask] / 2) &
                                       (yt[mask] <= yp[mask] + w[mask] / 2)))
 
-    # Left: MAE vs uncertainty
+    # Left: MAE vs uncertainty (no ideal line — different scales)
     ax = axes[0]
-    ax.plot(bin_centers, mae_binned, 'o-', color=COLORS['adaptive'], markersize=6, label='Observed MAE')
-    ax.plot(bin_centers, bin_centers * np.mean(mae_binned) / np.mean(bin_centers) if np.mean(bin_centers) > 0 else bin_centers,
-            '--', color='gray', alpha=0.5, label='Ideal calibration')
+    ax.plot(bin_centers, mae_binned, 'o-', color=COLORS['adaptive'], markersize=6,
+            linewidth=2, label='Observed MAE')
+    # Linear fit to show monotonic trend
+    mask_nonzero = np.array(bin_n) > 0
+    if mask_nonzero.sum() >= 3:
+        fit = np.polyfit(bin_centers[mask_nonzero], np.array(mae_binned)[mask_nonzero], 1)
+        x_fit = np.linspace(bin_centers[0], bin_centers[-1], 50)
+        ax.plot(x_fit, np.polyval(fit, x_fit), '--', color='gray', alpha=0.5,
+                linewidth=1, label=f'Linear fit (slope={fit[0]:.2f})')
     ax.set_xlabel('Predicted Uncertainty (MC σ)', fontsize=10)
     ax.set_ylabel('Observed MAE', fontsize=10)
-    ax.set_title('Calibration: Error vs Uncertainty', fontsize=11)
+    ax.set_title(f'MAE vs Uncertainty Level ({n_bins} bins)', fontsize=11)
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.2)
 
     # Right: Coverage vs bin
     ax = axes[1]
-    ax.bar(range(n_bins), cov_binned, color=COLORS['adaptive'], alpha=0.7, edgecolor='white')
-    ax.axhline(y=1 - alpha, color='gray', linestyle='--', alpha=0.4, linewidth=1)
+    bars = ax.bar(range(n_bins), cov_binned, color=COLORS['adaptive'], alpha=0.7, edgecolor='white')
+    ax.axhline(y=1 - alpha, color='gray', linestyle='--', alpha=0.4, linewidth=1,
+               label=f'Target: {1-alpha:.0%}')
+    for i, (bar, sz) in enumerate(zip(bars, bin_n)):
+        if sz > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
+                    f'n={sz}', ha='center', fontsize=6, color='#666')
     ax.set_xlabel('Uncertainty Bin (low → high)', fontsize=10)
-    ax.set_ylabel(f'Coverage (target: {1-alpha:.0%})', fontsize=10)
-    ax.set_title('Coverage by Uncertainty Level', fontsize=11)
-    ax.set_ylim(0, 1.05)
+    ax.set_ylabel(f'Coverage', fontsize=10)
+    ax.set_title(f'Coverage by Uncertainty Level (target: {1-alpha:.0%})', fontsize=11)
+    ax.legend(fontsize=8)
+    ax.set_ylim(0, 1.15)
     ax.grid(True, alpha=0.2, axis='y')
 
     fig.suptitle('Figure 8: Reliability Diagram', fontsize=12, y=1.01)
