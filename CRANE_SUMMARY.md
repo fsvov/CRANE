@@ -22,7 +22,7 @@ Corr(conf_text, conf_audio) = -0.4151  互补学习：文本强时音频退让
 
 没有人工设计规则——UBG 通过端到端训练**自主发现**了 MOSI 中文本远强于音频这一事实。
 
-![UBG Learned Confidence](figures/fig3_ubg_confidence.png)
+![UBG Learned Confidence](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig3_ubg_confidence.png)
 
 *图3 — UBG 学习到的模态置信度：双面板展示测试集上 UBG 为每个样本产生的置信度分数。左：文本置信度 vs. 音频置信度散点图，按情感极性着色（红色=负面，橙色=中性，绿色=正面）。左上角标注了 Pearson 相关系数——负值表明 UBG 学会了对模态进行互补门控（文本置信度高时，音频置信度倾向于降低，反之亦然）。数据点集中在高文本/低音频区域（x > 0.9，y ∈ [0.1, 0.5]），确认模型学到重度信任文本、选择性引入音频的策略。右：置信度边际分布的并列直方图。文本置信度（青色，μ≈0.98）在 1.0 附近尖锐集中，音频置信度（金色，μ≈0.32）在 [0.1, 0.6] 范围内广泛分布，说明音频是按样本情况被选择性使用的，而非被统一忽略。两种分布在负面/中性/正面标签间的一致性表明 UBG 的门控策略对输入的情感极性具有鲁棒性。*
 
@@ -42,15 +42,15 @@ UBG 训练版在不牺牲分类准确率的前提下提升回归精度。
 
 ### 2.2 Conformal 方法对比 (α=0.10，理论目标 90%)
 
-![Coverage-Width Trade-off](figures/fig1_coverage_width_tradeoff.png)
+![Coverage-Width Trade-off](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig1_coverage_width_tradeoff.png)
 
 *图1 — 覆盖率-宽度帕累托前沿：每条折线代表一种方法在4个显著性水平（α ∈ {0.05, 0.10, 0.15, 0.20}）下的表现。灰色虚线水平线标记理论覆盖目标 1−α。越靠左上角的方法越优秀（高覆盖+窄区间）。MC Dropout RAW（橙色×标记，左下角）覆盖率仅约35%，与90%目标相差55个百分点——直接证明不经过 conformal 校准的 Gaussian 不确定性估计在情感分析中完全不可靠。Adaptive Conformal（红色圆点，标注了 α 值）效率最优：92.7% 覆盖率，中位宽度仅 2.97，优于 Split（常数宽度）和 Mondrian（逐类条件）。MVE（绿色三角）覆盖最高但区间明显更宽。注意所有经过 conformal 校准的方法都聚集在各自的理论目标线附近，而未校准的 MC RAW 则严重偏移。*
 
 | 方法 | Coverage | Med Width | 训练成本 |
 |:---|:---:|:---:|:---:|
 | MC Dropout RAW（Gaussian 假设） | **35.0%** ✗ | 0.70 | 0 |
-| Split Conformal | **90.8%** ✓ | 2.96 | 0 |
-| **Adaptive (MC Dropout)** | **92.7%** ✓ | **2.97** | 0 |
+| Split Conformal | **90.8%** ✓ | **2.96** | 0 |
+| **Adaptive (MC Dropout)** | **92.7%** ✓ | 2.97 | 0 |
 | Mondrian Conformal | **91.1%** ✓ | 3.39 | 0 |
 | MVE + Adaptive | **92.3%** ✓ | 3.52 | 微调 |
 | Deep Ensemble + Adaptive | 91.3% ✓ | 3.68 | **4×** |
@@ -61,7 +61,7 @@ UBG 训练版在不牺牲分类准确率的前提下提升回归精度。
 
 **Deep Ensemble 不如 MC Dropout**：4 倍训练成本，区间反而更宽（3.68 vs 2.97），证明昂贵的集成学习在不确定性效率上劣于廉价的 MC Dropout。
 
-![Residual Distribution](figures/fig4_residual_distribution.png)
+![Residual Distribution](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig4_residual_distribution.png)
 
 *图4 — 残差分布：校准集 vs. 测试集：校准集（n≈229，蓝色）和测试集（n≈686，红色）的绝对残差 |y−ŷ| 密度直方图叠加。红色虚垂线标记从校准残差第 (1−α)(n+1) 个次序统计量计算得到的 conformal 分位数 q。标注显示 90.4% 的校准残差和 91.3% 的测试残差不大于 q——两者均非常接近标称 90% 目标。两个分布的强重叠（均在约 0.3 处达到峰值，右尾衰减趋势相似）为可交换性假设提供了可视化证据：校准集和测试集的残差来源于有效相同的分布。测试分布右尾略为突出，解释了为什么观测到的测试覆盖率（91.3%）适度超过了目标值（90%）。*
 
@@ -195,7 +195,7 @@ n_cal=80+: Coverage=90.8%  ← 之后持续稳定
 
 **40 个校准样本就足够**——对于小数据场景极具指导价值。
 
-![Calibration Sensitivity](figures/fig2_calibration_sensitivity.png)
+![Calibration Sensitivity](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig2_calibration_sensitivity.png)
 
 *图2 — 校准集规模敏感性分析（α=0.10）：双Y轴图，左轴为覆盖率（实线），右轴为中位宽度（点线/点划线），横轴为校准集大小 n_cal。对比 Split Conformal（蓝色）和 Adaptive Conformal（红色）。灰色虚线标记90%覆盖目标。关键发现：(1) 覆盖在 n_cal≈40 时即稳定——仅需极少样本即可获得有效推断。(2) Adaptive 覆盖率始终优于 Split，宽度代价适中。(3) 宽度曲线比覆盖率曲线波动更大，反映了分位数估计对个别高残差校准样本的敏感性。(4) n_cal 超过100后覆盖和宽度均趋于平稳，确认完整校准集（n=229）具有充足的统计效力。Split 用点线、Adaptive 用点划线区分，确保灰度打印可读。*
 
@@ -203,17 +203,17 @@ n_cal=80+: Coverage=90.8%  ← 之后持续稳定
 
 | 模态 | Coverage | Med Width |
 |:---|:---:|:---:|
-| Text-only | 93.0% | 3.00 |
-| Audio-only | 91.1% | **5.40** |
-| Multimodal (UBG) | **92.7%** | **2.97** |
+| Text-only | **93.0%** | 3.00 |
+| Audio-only | 91.1% | 5.40 |
+| Multimodal (UBG) | 92.7% | **2.97** |
 
 纯音频区间是文本的 1.8 倍。CRANE 的多模态融合首次在宽度上优于单模态，UBG 的负相关置信度分配是关键。
 
-![Conditional Coverage](figures/fig5_conditional_coverage.png)
+![Conditional Coverage](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig5_conditional_coverage.png)
 
 *图5 — 条件覆盖分析：两个面板展示 Adaptive Conformal（α=0.10，目标90%）在测试集不同子群体上的覆盖表现。左（按情感极性）：柱状图对比负面（n=379）、中性（n=30）和正面（n=277）样本的覆盖率。三个极性组均达到或超过90%目标（负面=91.8%，中性=93.3%，正面=93.9%），确认 conformal 保证不会对任何情感群体产生系统性不利。中性样本量极小（n=30），因此其覆盖率估计的置信区间较宽。右（按预测区间）：按模型预测值分层为6个宽度为1的区间（从 [−3,−2) 到 [2,3]）的覆盖率柱状图。极端预测的覆盖率最高（≥95%），在 [0,1) 区间（"弱正面"）降至最低约87%——这是模型在区分轻度正面与中性情感时最困难的地方。配色方案（红=负面区间，橙=中性区间，绿=正面区间）将预测桶映射到对应的情感极性。*
 
-![Width vs Magnitude](figures/fig6_width_vs_magnitude.png)
+![Width vs Magnitude](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig6_width_vs_magnitude.png)
 
 *图6 — 区间宽度 vs. 预测幅度：自适应 conformal 区间宽度与预测情感分数绝对值 |ŷ| 的散点图（全部686个测试样本）。绿色圆点表示覆盖样本（真实值在区间内，n=636），红色×标记表示遗漏样本（n=50）。黑色二次拟合曲线揭示了U型关系：区间宽度在中性预测范围（|ŷ|≈0–1，宽度≈3–4）最高，向两端递减（|ŷ|≈2–3，宽度≈2–3）。这一模式直接量化了模型的校准行为——当情感信号模棱两可时模型最不确定（需要最宽的区间），而对明确的正/负面表达则最自信（窄区间）。遗漏样本（红色）在低 ŷ 区域出现更频繁，但由于该区域覆盖样本占绝对多数，所有分箱的条件覆盖率仍保持在85%以上。标注的样本数（覆盖=636，遗漏=50）对应 α=0.10 时 92.7% 的整体覆盖率。*
 
@@ -224,11 +224,11 @@ n_cal=80+: Coverage=90.8%  ← 之后持续稳定
 "这部电影还行" → { -1, 0, 1 }  "可能是这 3 种情感之一"
 ```
 
-![Prediction Set Sizes](figures/fig7_prediction_set_sizes.png)
+![Prediction Set Sizes](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig7_prediction_set_sizes.png)
 
 *图7 — 分类 Conformal 预测集规模：左：α=0.10 时预测集大小的分布。模型始终需要2个类别（141个样本，绿色）或3个类别（545个样本，橙色）才能达到有效覆盖——在此置信度水平下从未出现单例预测（size=1）。这意味着模型无法以 ≥90% 的置信度为任何样本确定唯一的情感类别。右：堆叠柱状图展示随 α 增大预测集规模分布的变化。α=0.05（严格，95%目标）时，主导集合大小为4；α=0.10（90%目标）时，size 3 占主导；α=0.15–0.20时，size 2 成为多数，仅在 α=0.20（覆盖目标放宽至80%）时才出现少量 size-1 预测。随 α 增大的单调左移趋势验证了预期的权衡关系：放松置信度要求可产生更小、更精确的预测集。面板间统一的颜色编码（蓝=1, 绿=2, 橙=3, 红=4）便于交叉对比。*
 
-![Reliability Diagram](figures/fig8_reliability_diagram.png)
+![Reliability Diagram](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig8_reliability_diagram.png)
 
 *图8 — 可靠性图：左：分箱观测MAE与预测不确定性（MC dropout标准差σ）的关系，共10个等频分箱。红色圆点实线呈现清晰的单调关系：随着模型自身不确定性估计的增加（x轴右移），实际预测误差也随之增长。灰色虚线为线性拟合，斜率≈1.05，表明观测MAE增长速度略快于预测不确定性——在高不确定性水平下模型略微低估了自身误差。右：自适应 conformal 区间在各分箱中的覆盖率与90%目标线（灰色虚线）的对比。覆盖率在各分箱之间在约84%到97%之间波动，高不确定性分箱未出现系统性欠覆盖。每个柱子上的 n= 标注显示了各分箱的测试样本数，确认样本量充足。两个面板共同表明：虽然模型的原始不确定性估计具有合理的校准性（MAE单调增长趋势），但 conformal 校准对于在所有不确定性范围内将各分箱覆盖率提升至标称水平是必不可少的。*
 

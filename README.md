@@ -100,7 +100,7 @@ flowchart TB
 
 ## Key Results (CMU-MOSI, α=0.10)
 
-![Coverage-Width Trade-off](figures/fig1_coverage_width_tradeoff.png)
+![Coverage-Width Trade-off](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig1_coverage_width_tradeoff.png)
 
 *Figure 1: Coverage–Width Pareto frontier across 5 methods and 4 significance levels (α ∈ {0.05, 0.10, 0.15, 0.20}). Each point represents one method at one α level. Methods in the top-left corner achieve high coverage with narrow intervals — the ideal region. MC Dropout RAW collapses to ~35% coverage (bottom-left, annotated with arrow), proving that Gaussian assumptions without conformal calibration are catastrophically unreliable. The Adaptive Conformal method (red circles, labeled with α values) achieves the best efficiency: 92.7% coverage with median width 2.97 at α=0.10. Gray dashed horizontal lines mark the theoretical coverage target (1−α) for each α level.*
 
@@ -115,7 +115,7 @@ flowchart TB
 
 > **MC Dropout RAW proves the necessity of conformal**: without calibration, coverage is 35% — a 55pp gap from the 90% target.
 
-![Residual Distribution](figures/fig4_residual_distribution.png)
+![Residual Distribution](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig4_residual_distribution.png)
 
 *Figure 4: Overlaid density histograms of absolute residuals |y−ŷ| for the calibration set (n≈229, blue) and test set (n≈686, red). The red dashed vertical line marks the conformal quantile q ≈ 1.40 at α=0.10, computed from the calibration residuals. Annotations show the proportion of samples with residuals ≤ q: 90.4% for calibration (by construction) and 91.3% for test. The close match between the two distributions is visual evidence that the calibration and test sets are exchangeable — a necessary condition for conformal validity. The right tail of the test distribution extends slightly beyond the calibration tail, explaining why observed coverage (91.3%) modestly exceeds the nominal target (90%).*
 
@@ -125,7 +125,7 @@ flowchart TB
 
 UBG learns per-sample modality weights through end-to-end training:
 
-![UBG Learned Confidence](figures/fig3_ubg_confidence.png)
+![UBG Learned Confidence](https://raw.githubusercontent.com/fsvov/CRANE/master/figures/fig3_ubg_confidence.png)
 
 *Figure 3: UBG learned modality confidence on the test set (686 samples). Left: scatter plot of per-sample text confidence vs. audio confidence, colored by sentiment polarity (red=negative, orange=neutral, green=positive). The annotation box shows the Pearson correlation coefficient (r ≈ −0.08 to −0.42 depending on the training run) — a consistently negative value that confirms the UBG learns complementary modality weighting rather than reinforcing a single modality. Right: marginal histograms of text and audio confidence distributions. Text confidence is tightly clustered near 1.0 (μ≈0.98), while audio confidence is broadly distributed around 0.32, showing that the model independently learns to trust text far more than audio for this dataset — matching the finding that audio-only intervals are 1.8× wider than text-only intervals.*
 
@@ -153,7 +153,7 @@ xychart-beta
 | Modality | Coverage | Med Width |
 |:---|:---:|:---:|
 | Text-only | 93.0% | 3.00 |
-| Audio-only | 91.1% | **5.40** |
+| Audio-only | 91.1% | 5.40 |
 | **Multimodal (UBG)** | **92.7%** | **2.97** |
 
 Multimodal CRANE is the **only configuration where width is narrower than text-only** — UBG's complementary fusion eliminates redundant uncertainty.
