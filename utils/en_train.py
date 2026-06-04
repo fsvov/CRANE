@@ -282,14 +282,14 @@ def EnRun(config):
              num_model += 1
         if epoch - best_epoch >= config.early_stop:
             break
-    model.load_state_dict(torch.load(config.model_save_path + 'RH_acc.pth'))
+    model.load_state_dict(torch.load(config.model_save_path + 'RH_acc.pth', weights_only=True))
     test_results_loss = trainer.do_test(model, test_loader, "TEST")
     print('\n%s: >> ' % ('TEST (highest val acc) ') + dict_to_str(test_results_loss))
-    model.load_state_dict(torch.load(config.model_save_path + 'RH_loss.pth'))
+    model.load_state_dict(torch.load(config.model_save_path + 'RH_loss.pth', weights_only=True))
     test_results_acc = trainer.do_test(model, test_loader, "TEST")
     print('\n%s: >> ' % ('TEST (lowest val loss) ') + dict_to_str(test_results_acc))
     for index in range(num_model):
-        model.load_state_dict(torch.load(config.model_save_path + f'acc2&7high{index}.pth'))
+        model.load_state_dict(torch.load(config.model_save_path + f'acc2&7high{index}.pth', weights_only=True))
         test_results_loss = trainer.do_test(model, test_loader, "TEST")
         print('\n%s: >> ' % (f'TEST (highest val acc2&acc7)[{index}] ') + dict_to_str(test_results_loss))
 
@@ -300,7 +300,7 @@ def EnRun(config):
     print(" CONFORMAL PREDICTION EVALUATION ")
     print("=" * 70)
 
-    model.load_state_dict(torch.load(config.model_save_path + 'RH_loss.pth'))
+    model.load_state_dict(torch.load(config.model_save_path + 'RH_loss.pth', weights_only=True))
     model.eval()
 
     # =====================================================
@@ -558,7 +558,7 @@ def EnRun(config):
         for s in ensemble_seeds:
             ckpt_path = os.path.join('./saved_ensemble', f'seed{s}', 'RH_loss.pth')
             print(f"Loading ensemble member seed={s} from {ckpt_path}...")
-            ckpt = torch.load(ckpt_path)
+            ckpt = torch.load(ckpt_path, weights_only=True)
             model.load_state_dict(ckpt)
             model.eval()
             yp_c, std_c, _ = trainer.do_mc_inference(model, cal_loader, k=20)
@@ -646,22 +646,18 @@ def EnRun(config):
 
     # --- Figure 1: Coverage-Width trade-off ---
     cw_results = {}
-    for name, cp, extra in [
-        ('Split', split_cp, {}),
-        ('Adaptive', adaptive_cp, {'mc_std': mc_std_test}),
-        ('Mondrian', mondrian_cp, {'groups': test_groups}),
-        ('MVE', mve_cp, {'mc_std': mve_std_test}),
-    ]:
+    for name, cp in [('Split', split_cp), ('Adaptive', adaptive_cp),
+                      ('Mondrian', mondrian_cp), ('MVE', mve_cp)]:
         pts = {}
         for a in alphas:
             if name == 'Mondrian':
-                lo, up = cp.predict(y_pred_test if name != 'MVE' else mve_mean_test,
-                                    extra.get('groups', test_groups), a)
+                lo, up = cp.predict(y_pred_test, test_groups, a)
             elif name == 'MVE':
                 lo, up = cp.predict(mve_mean_test, mve_std_test, a)
-            else:
-                lo, up = cp.predict(y_pred_test, **{k: v for k, v in extra.items()
-                                     if k != 'groups'})
+            elif name == 'Adaptive':
+                lo, up = cp.predict(y_pred_test, mc_std_test, a)
+            else:  # Split
+                lo, up = cp.predict(y_pred_test, a)
             cov = compute_coverage(y_true_test.flatten(), lo.flatten(), up.flatten())
             _, mw = compute_interval_width(lo.flatten(), up.flatten())
             pts[a] = (cov, mw)
