@@ -131,6 +131,10 @@ UBG learns per-sample modality weights through end-to-end training:
 
 The model **independently discovers** that text dominates sentiment in MOSI, and learns to suppress audio when text is confident — all without manual rules.
 
+![UBG Confidence vs Width](figures/fig9_ubg_confidence_vs_width.png)
+
+*Figure 9: UBG confidence vs. conformal interval width — scatter plots with linear fits. Corr(conf_text, width) ≈ 0.09 and Corr(conf_audio, width) ≈ −0.03, both near zero. This reveals that UBG's modality-gating confidence and conformal prediction's difficulty estimate are largely orthogonal signals — UBG chooses which modality to trust, while conformal tells how uncertain the prediction is.*
+
 ---
 
 ## Calibration Sensitivity
