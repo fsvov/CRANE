@@ -307,7 +307,7 @@ def fig6_width_vs_magnitude(y_pred, interval_widths, covered, alpha=0.10):
     ax.scatter(np.abs(yp[cv]), w[cv], c=COLORS['covered'], alpha=0.4, s=10,
                label=f'Covered ({cv.sum()}/{len(cv)})', edgecolors='none')
     ax.scatter(np.abs(yp[~cv]), w[~cv], c=COLORS['missed'], alpha=0.6, s=15,
-               label=f'Missed ({(~cv).sum()}/{len(cv)})', edgecolors='none', marker='x')
+               label=f'Missed ({(~cv).sum()}/{len(cv)})', marker='x')
 
     # Trend line
     z = np.polyfit(np.abs(yp), w, 2)
@@ -477,7 +477,7 @@ def fig9_ubg_confidence_vs_width(conf_text, conf_audio, interval_widths, sentime
             if mask.sum() == 0:
                 continue
             ax.scatter(conf[mask], w[mask], c=sent_colors[sent],
-                       label=sent, alpha=0.4, s=10, edgecolors='none')
+                       label=sent, alpha=0.5, s=15, edgecolors='none', linewidths=0)
 
         # Linear fit
         z = np.polyfit(conf, w, 1)
