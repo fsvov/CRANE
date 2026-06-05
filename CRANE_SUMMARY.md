@@ -296,35 +296,3 @@ UBG 通过端到端训练**自动发现**了每个模态在情感分析中的价
 
 对于数据收集成本极高的领域（稀有语言、特定领域），这一发现直接指导标注策略。
 
----
-
-## 五、论文叙事框架
-
-1. **情感分析需要不确定性量化**
-   - CRANE 相比 SAGE-Net 改善 MAE（0.705→0.662），Corr 略有 trade-off（0.836→0.827）
-   - MC Dropout RAW 只有 34.4% coverage（差 55pp），Gaussian 假设完全错误
-
-2. **Conformal prediction 恢复覆盖保证**
-   - 所有基于区间的回归 conformal 方法（Split/Adaptive/MVE/Ensemble）均达到标称覆盖目标
-   - 前提条件：校准集与测试集可交换、校准集独立于训练
-   - Classification Conformal（88.3%）因离散化出现欠覆盖，低于 90% 目标
-
-3. **Adaptive MC Dropout 是实用默认方案**
-   - 零额外训练成本，推理时 $`K=20`$ 次前向传播
-   - 样本级自适应宽度，中位宽度（2.92）与 Split（2.93）几乎相同
-   - 在"覆盖-宽度"上与 Split 几乎重合——应表述为 practical default 而非 optimal
-
-4. **Mondrian 按真实标签分组是 oracle 分析**
-   - 真实极性在推理时不可得，应作为分析工具而非可部署方法
-   - 可部署 Mondrian 需使用推理时可获的分组变量（如预测极性）
-
-5. **UBG 学到文本主导、音频选择性补充**
-   - $`\mathrm{conf}_{text}=0.98`$, $`\mathrm{conf}_{audio}=0.37`$, $`\mathrm{corr}=-0.20`$：自主发现文本远强于音频
-   - UBG 置信度与 conformal 宽度无明显线性相关（$`r\approx 0.13`$, $`r\approx -0.04`$）
-   - 证据支持 UBG 侧重模态可靠性，与不确定性估计和覆盖保证形成互补
-   - "职责分离"应作为证据支持而非绝对证明
-
-6. **实用价值**
-   - 在 CMU-MOSI 上约 40 个校准样本时覆盖率趋于稳定
-   - 部署时可自动区分"可信预测"和"需人工审核"
-   - 分类 conformal 提供可解释的预测集
