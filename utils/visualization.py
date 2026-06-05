@@ -477,7 +477,7 @@ def fig9_ubg_confidence_vs_width(conf_text, conf_audio, interval_widths, sentime
             if mask.sum() == 0:
                 continue
             ax.scatter(conf[mask], w[mask], c=sent_colors[sent],
-                       label=sent, alpha=0.5, s=15, edgecolors='none', linewidths=0)
+                       label=sent, alpha=0.2, s=20, edgecolors='none', linewidths=0)
 
         # Linear fit
         z = np.polyfit(conf, w, 1)

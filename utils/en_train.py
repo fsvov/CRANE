@@ -548,7 +548,8 @@ def EnRun(config):
     print(f"\n  UBG confidence vs Adaptive Width:")
     print(f"  Corr(conf_text, width) = {corr_ct_w:.4f}")
     print(f"  Corr(conf_audio, width) = {corr_ca_w:.4f}")
-    _ubg_width_data = (conf_t, conf_a, adapt_w_test, conf_lab)
+    _ubg_sent_labels = np.array(['negative' if l < 0 else 'neutral' if l == 0 else 'positive' for l in conf_lab])
+    _ubg_width_data = (conf_t, conf_a, adapt_w_test, _ubg_sent_labels)
 
     # =====================================================
     # 9. Deep Ensemble (if available)
