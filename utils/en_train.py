@@ -300,6 +300,8 @@ def EnRun(config):
     print(" CONFORMAL PREDICTION EVALUATION ")
     print("=" * 70)
 
+    _ubg_width_data = None
+
     model.load_state_dict(torch.load(config.model_save_path + 'RH_loss.pth', weights_only=True))
     model.eval()
 
@@ -546,7 +548,7 @@ def EnRun(config):
     print(f"\n  UBG confidence vs Adaptive Width:")
     print(f"  Corr(conf_text, width) = {corr_ct_w:.4f}")
     print(f"  Corr(conf_audio, width) = {corr_ca_w:.4f}")
-    viz['ubg_width_corr'] = (conf_t, conf_a, adapt_w_test, conf_lab)
+    _ubg_width_data = (conf_t, conf_a, adapt_w_test, conf_lab)
 
     # =====================================================
     # 9. Deep Ensemble (if available)
@@ -756,6 +758,8 @@ def EnRun(config):
 
     # --- Figure 8: Reliability diagram ---
     viz['reliability'] = (y_pred_test, y_true_test, adapt_w, mc_std_test)
+    if _ubg_width_data is not None:
+        viz['ubg_width_corr'] = _ubg_width_data
 
     # Generate all figures
     save_all_figures(viz)
