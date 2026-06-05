@@ -38,10 +38,10 @@ def _save(name):
 
 
 # ============================================================
-# Figure 1: Coverage-Width Trade-off
+# Figure 2: Coverage-Width Trade-off
 # ============================================================
 
-def fig1_coverage_width_tradeoff(data):
+def fig2_coverage_width_tradeoff(data):
     """Pareto-style plot: coverage vs med_width for all methods across α levels.
 
     data keys:
@@ -88,19 +88,19 @@ def fig1_coverage_width_tradeoff(data):
 
     ax.set_xlabel('Median Interval Width (↓ better)', fontsize=11)
     ax.set_ylabel('Coverage (→ target)', fontsize=11)
-    ax.set_title('Figure 1: Coverage–Width Trade-off Across Methods and α Levels', fontsize=12)
+    ax.set_title('Figure 2: Coverage–Width Trade-off Across Methods and α Levels', fontsize=12)
     ax.legend(loc='lower right', fontsize=8, framealpha=0.9)
     ax.set_xlim(left=0)
     ax.set_ylim(0.25, 1.02)
     ax.grid(True, alpha=0.3)
-    _save('fig1_coverage_width_tradeoff.png')
+    _save('fig2_coverage_width_tradeoff.png')
 
 
 # ============================================================
-# Figure 2: Calibration Size Sensitivity
+# Figure 4: Calibration Size Sensitivity
 # ============================================================
 
-def fig2_calibration_sensitivity(data):
+def fig4_calibration_sensitivity(data):
     """Dual-axis plot: coverage and median width vs n_cal.
 
     data keys:
@@ -125,7 +125,7 @@ def fig2_calibration_sensitivity(data):
     ax1.set_xlabel('Calibration Set Size (n_cal)', fontsize=11)
     ax1.set_ylabel('Coverage', fontsize=11, color='#333')
     ax2.set_ylabel('Median Width', fontsize=11, color='#666')
-    ax1.set_title('Figure 2: Calibration Size Sensitivity (α=0.10)', fontsize=12)
+    ax1.set_title('Figure 4: Calibration Size Sensitivity (α=0.10)', fontsize=12)
 
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
@@ -133,14 +133,14 @@ def fig2_calibration_sensitivity(data):
 
     ax1.set_ylim(0.80, 1.0)
     ax1.grid(True, alpha=0.3)
-    _save('fig2_calibration_sensitivity.png')
+    _save('fig4_calibration_sensitivity.png')
 
 
 # ============================================================
-# Figure 3: UBG Learned Confidence Distribution
+# Figure 1: UBG Learned Confidence Distribution
 # ============================================================
 
-def fig3_ubg_confidence(conf_text, conf_audio, sentiment_labels):
+def fig1_ubg_confidence(conf_text, conf_audio, sentiment_labels):
     """Scatter plot: conf_text vs conf_audio, colored by sentiment polarity.
 
     Args:
@@ -184,15 +184,15 @@ def fig3_ubg_confidence(conf_text, conf_audio, sentiment_labels):
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.2)
 
-    fig.suptitle('Figure 3: UBG Learned Modality Confidence', fontsize=12, y=1.01)
-    _save('fig3_ubg_confidence.png')
+    fig.suptitle('Figure 1: UBG Learned Modality Confidence', fontsize=12, y=1.01)
+    _save('fig1_ubg_confidence.png')
 
 
 # ============================================================
-# Figure 4: Residual Distribution (Cal vs Test)
+# Figure 3: Residual Distribution (Cal vs Test)
 # ============================================================
 
-def fig4_residual_distribution(cal_residuals, test_residuals, q_value, alpha=0.10):
+def fig3_residual_distribution(cal_residuals, test_residuals, q_value, alpha=0.10):
     """Overlaid histogram of calibration and test residuals with quantile marker.
 
     Args:
@@ -218,10 +218,10 @@ def fig4_residual_distribution(cal_residuals, test_residuals, q_value, alpha=0.1
 
     ax.set_xlabel('Absolute Residual |y − ŷ|', fontsize=11)
     ax.set_ylabel('Density', fontsize=11)
-    ax.set_title('Figure 4: Residual Distribution — Calibration vs Test', fontsize=12)
+    ax.set_title('Figure 3: Residual Distribution — Calibration vs Test', fontsize=12)
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.2)
-    _save('fig4_residual_distribution.png')
+    _save('fig3_residual_distribution.png')
 
 
 # ============================================================
@@ -503,8 +503,8 @@ def save_all_figures(viz_data):
     """Generate all 8 figures from a single data dictionary.
 
     viz_data keys (populated during conformal evaluation):
-      - coverage_width: dict for fig1
-      - calibration_sensitivity: dict for fig2
+      - coverage_width: dict for fig2
+      - calibration_sensitivity: dict for fig4
       - ubg_confidence: (conf_text, conf_audio, sentiment_labels)
       - residuals: (cal_residuals, test_residuals, q_value, alpha)
       - conditional_coverage: (sentiment_cond, bucket_cond)
@@ -515,18 +515,18 @@ def save_all_figures(viz_data):
     print("\n--- Generating Figures ---")
 
     if 'coverage_width' in viz_data:
-        fig1_coverage_width_tradeoff(viz_data['coverage_width'])
+        fig2_coverage_width_tradeoff(viz_data['coverage_width'])
 
     if 'calibration_sensitivity' in viz_data:
-        fig2_calibration_sensitivity(viz_data['calibration_sensitivity'])
+        fig4_calibration_sensitivity(viz_data['calibration_sensitivity'])
 
     if 'ubg_confidence' in viz_data:
         conf_t, conf_a, labels = viz_data['ubg_confidence']
-        fig3_ubg_confidence(conf_t, conf_a, labels)
+        fig1_ubg_confidence(conf_t, conf_a, labels)
 
     if 'residuals' in viz_data:
         cal_r, test_r, q, a = viz_data['residuals']
-        fig4_residual_distribution(cal_r, test_r, q, a)
+        fig3_residual_distribution(cal_r, test_r, q, a)
 
     if 'conditional_coverage' in viz_data:
         sent_cond, buck_cond = viz_data['conditional_coverage']
