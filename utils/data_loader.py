@@ -199,5 +199,5 @@ def data_loader(batch_size, dataset, seed=42):
         cal_loader = DataLoader(cal_data, batch_size=batch_size, shuffle=False)
         return train_loader, test_loader, es_loader, cal_loader
     else:
-        raise
+        raise ValueError(f"Unsupported dataset: '{dataset}'. Currently only 'mosi' is supported.")
 

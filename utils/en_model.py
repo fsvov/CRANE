@@ -157,8 +157,10 @@ class CRANEModel(nn.Module):
                     padding_idx = sum(audio_out.attentions[layer][batch][0][0] != 0)
                     audio_mask_idx_new.append(padding_idx)
                     break
-                except:
+                except (IndexError, AttributeError, KeyError):
                     layer += 1
+            else:
+                audio_mask_idx_new.append(A_hidden_states.shape[1])
         audio_mask_new = torch.zeros(A_hidden_states.shape[0], A_hidden_states.shape[1]).to(device)
         for batch in range(audio_mask_new.shape[0]):
             audio_mask_new[batch][:audio_mask_idx_new[batch]] = 1

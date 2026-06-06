@@ -1,58 +1,63 @@
-from moviepy.editor import *
+"""Extract 16kHz mono WAV audio from video files.
+
+Usage:
+    python extract_audio.py --dataset mosi \\
+        --input data/MOSI/Raw \\
+        --output data/MOSI/wav
+"""
+
 import os
 import argparse
-import cv2
-import time
 from tqdm import tqdm
 from moviepy.video.io.VideoFileClip import VideoFileClip
-import subprocess
 
-def extract(dataset):
-    # Set input and output path
+
+def extract(dataset, input_path, output_path):
     dataset = dataset.upper()
-    input_path = f'your input path' #e.g. '...data/{dataset}/Raw'
-    output_path = (f'your output path') #'...data/{dataset}/wav'
-    if os.path.exists(input_path):
-        print("Path exists!")
-    else:
-        print("Path does NOT exist!")
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"Input path does not exist: {input_path}")
+
+    os.makedirs(output_path, exist_ok=True)
 
     for folder in tqdm(os.listdir(input_path)):
-        
-        input_subdirectory_path = os.path.join(input_path, folder)
-        output_subdirectory_path = os.path.join(output_path, folder)
-        if not os.path.exists(output_subdirectory_path):
-            os.makedirs(output_subdirectory_path)
-        
-        for file in os.listdir(input_subdirectory_path):
-            if file.split(".")[-1] != "mp4" or file.split(".")[1] != "mp4":
+        in_subdir = os.path.join(input_path, folder)
+        out_subdir = os.path.join(output_path, folder)
+        if not os.path.isdir(in_subdir):
+            continue
+        os.makedirs(out_subdir, exist_ok=True)
+
+        for file in os.listdir(in_subdir):
+            if not file.endswith(".mp4"):
                 continue
-            input_file_path = os.path.join(input_subdirectory_path, file)
-            output_file_path = os.path.join(output_subdirectory_path, file)
-            if os.path.exists(input_file_path.replace(".mp4", "-edited.mp4")):
+            if "-edited" in file:
                 continue
-            # Load the video file
-            video = VideoFileClip(input_file_path)
-            # Extract the audio from the video
-            audio = video.audio
-            # Set the desired sampling rate
-            desired_sampling_rate = 16000  # Replace this value with your desired sampling rate
-            # Resample the audio to the desired sampling rate
-            resampled_audio = audio.set_fps(desired_sampling_rate)
-            if "-edited.mp4" in output_file_path:
-                output_file_path = output_file_path.replace("-edited.mp4", ".mp4")
-            output_file_path = output_file_path.split(".")[0] + '.wav'
+
+            input_file = os.path.join(in_subdir, file)
+            output_file = os.path.join(out_subdir, os.path.splitext(file)[0] + ".wav")
+
+            if os.path.exists(output_file):
+                continue
+
             try:
-                # Save the extracted and resampled audio to a WAV file
-                resampled_audio.write_audiofile(output_file_path, codec='pcm_s16le', verbose=False, logger=None)
-            except:
-                print(input_file_path)
+                video = VideoFileClip(input_file)
+                audio = video.audio
+                resampled = audio.set_fps(16000)
+                resampled.write_audiofile(
+                    output_file, codec='pcm_s16le', verbose=False, logger=None
+                )
+                video.close()
+            except Exception as exc:
+                print(f"  Failed: {input_file} ({exc})")
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='sims', help='dataset name')
+    parser = argparse.ArgumentParser(description="Extract audio from videos")
+    parser.add_argument('--dataset', type=str, default='mosi', help='dataset name')
+    parser.add_argument('--input', type=str, required=True,
+                        help='path to raw video directory')
+    parser.add_argument('--output', type=str, required=True,
+                        help='path to output WAV directory')
     args = parser.parse_args()
 
-    extract(args.dataset)
+    extract(args.dataset, args.input, args.output)
