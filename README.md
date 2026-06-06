@@ -223,24 +223,39 @@ After training, the pipeline automatically runs all 6 conformal methods:
 
 ---
 
+## Running Tests
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
+33 tests covering: coverage guarantees, edge cases (small calibration sets, zero std clamping, unknown group fallback), MC dropout under-coverage reproduction, and all helper functions.
+
 ## Code Structure
 
 ```
 CRANE/
 ├── run.py                     # Main entry point
 ├── config.py                  # Model & training configuration
+├── demo.ipynb                 # Quick demo notebook (no training needed)
 ├── run_crane.sh               # SLURM single-run script
 ├── run_ensemble.sh            # SLURM 4-seed ensemble script
 ├── convert_for_crane.py       # Data format conversion
 ├── extract_audio.py           # Audio extraction from video
 ├── requirements.txt
+├── ARCHITECTURE.md            # Design decisions and rationale
+├── tests/
+│   ├── __init__.py
+│   └── test_conformal.py      # 33 unit tests for conformal methods
 └── utils/
     ├── en_model.py            # CRANE model (UBG + dual head)
     ├── en_train.py            # Training + conformal evaluation pipeline
     ├── crane_architecture.py  # CRANE cross-attention block
-    ├── conformal.py           # 6 conformal predictors + metrics
+    ├── conformal.py           # 6 conformal predictors + metrics (type-annotated)
     ├── data_loader.py         # Data loading (calibration-aware split)
-    └── metricsTop.py          # Evaluation metrics + formatting
+    ├── metricsTop.py          # Evaluation metrics + formatting
+    └── visualization.py       # 9 publication-quality figures
 ```
 
 ---

@@ -1,16 +1,26 @@
+from __future__ import annotations
+
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
+from typing import Tuple, Dict, List, Optional
 
 
-def compute_coverage(y_true, lower, upper):
-    return np.mean((y_true >= lower) & (y_true <= upper))
+def compute_coverage(
+    y_true: ArrayLike, lower: ArrayLike, upper: ArrayLike
+) -> float:
+    return float(np.mean((np.asarray(y_true) >= np.asarray(lower)) & (np.asarray(y_true) <= np.asarray(upper))))
 
 
-def compute_interval_width(lower, upper):
-    widths = upper - lower
-    return np.mean(widths), np.median(widths)
+def compute_interval_width(
+    lower: ArrayLike, upper: ArrayLike
+) -> Tuple[float, float]:
+    widths = np.asarray(upper) - np.asarray(lower)
+    return float(np.mean(widths)), float(np.median(widths))
 
 
-def compute_interval_score(y_true, lower, upper, alpha):
+def compute_interval_score(
+    y_true: ArrayLike, lower: ArrayLike, upper: ArrayLike, alpha: float
+) -> float:
     """Gneiting & Raftery interval score (lower is better)."""
     width = upper - lower
     penalty_low = (2.0 / alpha) * (lower - y_true) * (y_true < lower)
@@ -18,7 +28,9 @@ def compute_interval_score(y_true, lower, upper, alpha):
     return np.mean(width + penalty_low + penalty_high)
 
 
-def conditional_coverage_by_sentiment(y_true, y_pred, lower, upper):
+def conditional_coverage_by_sentiment(
+    y_true: ArrayLike, y_pred: ArrayLike, lower: ArrayLike, upper: ArrayLike
+) -> Dict[str, Dict[str, float]]:
     """Conditional coverage by negative / neutral / positive."""
     yt = np.asarray(y_true).flatten()
     yp = np.asarray(y_pred).flatten()
@@ -42,7 +54,9 @@ def conditional_coverage_by_sentiment(y_true, y_pred, lower, upper):
     return results
 
 
-def conditional_coverage_by_bucket(y_pred, y_true, lower, upper):
+def conditional_coverage_by_bucket(
+    y_pred: ArrayLike, y_true: ArrayLike, lower: ArrayLike, upper: ArrayLike
+) -> Dict[str, Dict[str, float]]:
     """Conditional coverage by prediction buckets [-3,-2), ..., [2,3]."""
     yt = np.asarray(y_true).flatten()
     yp = np.asarray(y_pred).flatten()
@@ -69,15 +83,17 @@ def conditional_coverage_by_bucket(y_pred, y_true, lower, upper):
 class SplitConformalPredictor:
     """Level 1: Split conformal prediction with constant-width intervals."""
 
-    def __init__(self):
-        self._q = None
-        self._residuals = None
+    def __init__(self) -> None:
+        self._q: Optional[float] = None
+        self._residuals: Optional[NDArray[np.float64]] = None
 
-    def calibrate(self, y_true, y_pred):
+    def calibrate(self, y_true: ArrayLike, y_pred: ArrayLike) -> None:
         residuals = np.abs(np.asarray(y_true).flatten() - np.asarray(y_pred).flatten())
         self._residuals = residuals
 
-    def predict(self, y_pred, alpha):
+    def predict(
+        self, y_pred: ArrayLike, alpha: float
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         if self._residuals is None:
             raise RuntimeError("Must call calibrate() first")
         yp = np.asarray(y_pred).flatten()
@@ -94,18 +110,22 @@ class SplitConformalPredictor:
 class MCAdaptiveConformalPredictor:
     """Level 1.5: Locally adaptive conformal prediction using MC dropout variance."""
 
-    def __init__(self):
-        self._q = None
-        self._scores = None
+    def __init__(self) -> None:
+        self._q: Optional[float] = None
+        self._scores: Optional[NDArray[np.float64]] = None
 
-    def calibrate(self, y_true, y_pred, mc_std):
+    def calibrate(
+        self, y_true: ArrayLike, y_pred: ArrayLike, mc_std: ArrayLike
+    ) -> None:
         yt = np.asarray(y_true).flatten()
         yp = np.asarray(y_pred).flatten()
         std = np.asarray(mc_std).flatten()
         std = np.maximum(std, 1e-8)
         self._scores = np.abs(yt - yp) / std
 
-    def predict(self, y_pred, mc_std, alpha):
+    def predict(
+        self, y_pred: ArrayLike, mc_std: ArrayLike, alpha: float
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         if self._scores is None:
             raise RuntimeError("Must call calibrate() first")
         yp = np.asarray(y_pred).flatten()
@@ -131,10 +151,13 @@ class MondrianConformalPredictor:
     not just marginally over all samples.
     """
 
-    def __init__(self):
-        self._qs = {}
+    def __init__(self) -> None:
+        self._qs: Dict[str, NDArray[np.float64]] = {}
+        self._groups: Optional[NDArray[np.object_]] = None
 
-    def calibrate(self, y_true, y_pred, groups):
+    def calibrate(
+        self, y_true: ArrayLike, y_pred: ArrayLike, groups: ArrayLike
+    ) -> None:
         yt = np.asarray(y_true).flatten()
         yp = np.asarray(y_pred).flatten()
         self._groups = np.asarray(groups).flatten()
@@ -145,7 +168,9 @@ class MondrianConformalPredictor:
                 continue
             self._qs[g] = np.sort(residuals[mask])
 
-    def predict(self, y_pred, groups, alpha):
+    def predict(
+        self, y_pred: ArrayLike, groups: ArrayLike, alpha: float
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         if not self._qs:
             raise RuntimeError("Must call calibrate() first")
         yp = np.asarray(y_pred).flatten()
@@ -166,7 +191,7 @@ class MondrianConformalPredictor:
         return lower, upper
 
 
-def sentiment_group(y):
+def sentiment_group(y: ArrayLike) -> NDArray[np.object_]:
     """Map continuous sentiment to polarity group: negative, neutral, positive."""
     y = np.asarray(y).flatten()
     groups = np.full_like(y, "neutral", dtype=object)
@@ -175,7 +200,9 @@ def sentiment_group(y):
     return groups
 
 
-def mc_dropout_interval(y_pred, mc_std, alpha):
+def mc_dropout_interval(
+    y_pred: ArrayLike, mc_std: ArrayLike, alpha: float
+) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Baseline: raw MC Dropout intervals (Gaussian assumption, no conformal)."""
     from scipy.stats import norm
     z = norm.ppf(1 - alpha / 2)
@@ -194,7 +221,7 @@ def mc_dropout_interval(y_pred, mc_std, alpha):
 CLASS_CENTERS = [-3, -2, -1, 0, 1, 2, 3]
 
 
-def map_to_7class(y):
+def map_to_7class(y: ArrayLike) -> NDArray[np.int_]:
     """Map continuous sentiment [-3, 3] to 7-class index {-3, -2, ..., 3}."""
     y = np.asarray(y).flatten()
     return np.clip(np.round(y).astype(int), -3, 3)
@@ -207,16 +234,18 @@ class ClassificationConformalPredictor:
     discrete prediction sets instead of continuous intervals.
     """
 
-    def __init__(self, class_centers=None):
-        self.class_centers = class_centers or CLASS_CENTERS
-        self._residuals = None
-        self._q = None
+    def __init__(self, class_centers: Optional[List[int]] = None) -> None:
+        self.class_centers: List[int] = class_centers or CLASS_CENTERS
+        self._residuals: Optional[NDArray[np.float64]] = None
+        self._q: Optional[float] = None
 
-    def calibrate(self, y_true, y_pred):
+    def calibrate(self, y_true: ArrayLike, y_pred: ArrayLike) -> None:
         residuals = np.abs(np.asarray(y_true).flatten() - np.asarray(y_pred).flatten())
         self._residuals = residuals
 
-    def predict(self, y_pred, alpha):
+    def predict(
+        self, y_pred: ArrayLike, alpha: float
+    ) -> List[List[int]]:
         if self._residuals is None:
             raise RuntimeError("Must call calibrate() first")
         yp = np.asarray(y_pred).flatten()
@@ -235,7 +264,9 @@ class ClassificationConformalPredictor:
         return sets
 
 
-def classification_set_metrics(y_true_cont, prediction_sets):
+def classification_set_metrics(
+    y_true_cont: ArrayLike, prediction_sets: List[List[int]]
+) -> Dict[str, object]:
     """Compute coverage, set size distribution, and singleton rate."""
     yt = map_to_7class(np.asarray(y_true_cont).flatten())
     n = len(yt)
@@ -253,7 +284,9 @@ def classification_set_metrics(y_true_cont, prediction_sets):
     }
 
 
-def classification_conditional_by_sentiment(y_true_cont, prediction_sets):
+def classification_conditional_by_sentiment(
+    y_true_cont: ArrayLike, prediction_sets: List[List[int]]
+) -> Dict[str, Dict[str, float]]:
     """Conditional set metrics by true sentiment polarity."""
     yt = np.asarray(y_true_cont).flatten()
     negative = yt < 0

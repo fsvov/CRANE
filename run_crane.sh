@@ -1,31 +1,34 @@
 #!/bin/bash
 # ============================================================
 # CRANE — single-run SLURM submission script
-# Configure the SBATCH directives below for your HPC cluster.
+# ============================================================
+# Usage:
+#   1. Fill in the <...> placeholders below with your cluster settings
+#   2. Submit: sbatch run_crane.sh
 # ============================================================
 #SBATCH -o crane.%j.out
 #SBATCH -e crane.%j.err
 #SBATCH -J crane
-#SBATCH -A <your-account>          # <-- configure
-#SBATCH -p <your-gpu-partition>    # <-- configure
-#SBATCH -q <your-qos>              # <-- configure
+#SBATCH -A <your-account>
+#SBATCH -p <your-gpu-partition>
+#SBATCH -q <your-qos>
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --chdir=<your-project-dir> # <-- configure
+#SBATCH --chdir=<your-project-dir>
 
 # ============================================================
-# Environment — adjust to your cluster setup
+# Environment
 # ============================================================
-module load anaconda3/2022       # <-- configure
-conda activate data_analysis     # <-- configure
+module load anaconda3/2022
+conda activate data_analysis
 
-# Optional: offline mode (set if no internet on compute nodes)
+# Optional: offline mode for compute nodes without internet
 # export HF_HUB_OFFLINE=1
 # export TRANSFORMERS_OFFLINE=1
 # export HF_HOME="$HOME/.cache/huggingface"
 
-# NLTK data path (set if using custom location)
+# Optional: custom NLTK data path
 # export NLTK_DATA=<your-nltk-data-dir>
 
 python run.py
