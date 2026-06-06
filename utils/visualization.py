@@ -1,4 +1,4 @@
-"""CRANE visualization module — 8 publication-quality figures.
+"""CRANE visualization module — 9 publication-quality figures.
 
 All figures are saved to figures/ as PNG files (300 DPI).
 Uses matplotlib + seaborn. Non-interactive Agg backend for HPC compatibility.

@@ -144,9 +144,9 @@ print(f"   Copied/symlinked: {copied}, Missing: {missing}")
 # ============================================================
 # 完成
 # ============================================================
-print(f"\n✅ Done!")
-print(f"   CSV  → {os.path.abspath(csv_path)}")
-print(f"   Audio → {os.path.abspath(audio_out)}")
-print(f"\n   Now update data_loader.py with:")
+print(f"\n✅ 完成！")
+print(f"   CSV  路径 → {os.path.abspath(csv_path)}")
+print(f"   音频 路径 → {os.path.abspath(audio_out)}")
+print(f"\n   请在 data_loader.py 中设置以下路径：")
 print(f"     csv_path = '{os.path.abspath(csv_path)}'")
 print(f"     audio_file_path = '{os.path.abspath(audio_out)}'")

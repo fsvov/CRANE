@@ -42,9 +42,9 @@ class UncertaintyBidirectionalGate(nn.Module):
     (feature_dim → 1 each). Confidences gate the features before bi-gating,
     allowing the model to down-weight unreliable modalities per sample.
 
-    Confidence projections are trained end-to-end with the main model.
-    Stored confidences (_last_conf_text, _last_conf_audio) are accessible
-    after forward for conformal analysis.
+    Returns (fused_features, conf_text, conf_audio) — confidences are
+    returned explicitly rather than stored as side-effect state, avoiding
+    DataParallel access-path issues.
     """
 
     def __init__(self, config, feature_dim):
@@ -52,8 +52,6 @@ class UncertaintyBidirectionalGate(nn.Module):
         self.bi_gate = BiDirectionalGatedMechanism(config, feature_dim)
         self.conf_proj_text = nn.Linear(feature_dim, 1)
         self.conf_proj_audio = nn.Linear(feature_dim, 1)
-        self._last_conf_text = None
-        self._last_conf_audio = None
 
     def forward(self, audio_features, text_features):
         conf_t = torch.sigmoid(self.conf_proj_text(text_features))
@@ -61,9 +59,7 @@ class UncertaintyBidirectionalGate(nn.Module):
         weighted_audio = conf_a * audio_features
         weighted_text = conf_t * text_features
         fused = self.bi_gate(weighted_audio, weighted_text)
-        self._last_conf_text = conf_t.detach()
-        self._last_conf_audio = conf_a.detach()
-        return fused
+        return fused, conf_t.detach(), conf_a.detach()
 
 
 class CRANEModel(nn.Module):
@@ -168,10 +164,12 @@ class CRANEModel(nn.Module):
         audio_inputs, audio_attn_mask = self.prepend_cls(A_hidden_states, audio_mask_new, 'audio')
         text_inputs, audio_inputs = self.CRANEBlock(text_inputs, text_attn_mask, audio_inputs, audio_attn_mask)
 
+        conf_t, conf_a = None, None
         if self.fusion_method == 'v1':
             fused_hidden_states = torch.cat((text_inputs[:, 0, :], audio_inputs[:, 0, :]), dim=1)
         elif self.fusion_method == 'v2':
-            fused_hidden_states = self.ubi_gated_model(text_inputs[:, 0, :], audio_inputs[:, 0, :])
+            fused_hidden_states, conf_t, conf_a = self.ubi_gated_model(
+                text_inputs[:, 0, :], audio_inputs[:, 0, :])
         elif self.fusion_method == 'v3':
             fused_hidden_states = self.weightfusion(text_inputs[:, 0, :], audio_inputs[:, 0, :])
         elif self.fusion_method == 'v4':
@@ -182,12 +180,12 @@ class CRANEModel(nn.Module):
                 combin_mask = None
             fused_hidden_states = self.selfatt_fusion(combin_features, src_key_padding_mask=combin_mask)
             fused_hidden_states = fused_hidden_states.mean(dim=1)
-        return fused_hidden_states
+        return fused_hidden_states, conf_t, conf_a
 
     def forward(self, text_inputs, text_mask, audio_inputs, audio_mask):
-        fused_hidden_states = self._extract_features(text_inputs, text_mask,
-                                                      audio_inputs, audio_mask)
-        return self.fused_output_layers(fused_hidden_states)
+        fused_hidden_states, conf_t, conf_a = self._extract_features(
+            text_inputs, text_mask, audio_inputs, audio_mask)
+        return self.fused_output_layers(fused_hidden_states), conf_t, conf_a
 
 
 class CRANEModelMVE(CRANEModel):
@@ -201,11 +199,11 @@ class CRANEModelMVE(CRANEModel):
         super().__init__(config)
 
     def forward(self, text_inputs, text_mask, audio_inputs, audio_mask):
-        fused_hidden_states = self._extract_features(text_inputs, text_mask,
-                                                      audio_inputs, audio_mask)
+        fused_hidden_states, conf_t, conf_a = self._extract_features(
+            text_inputs, text_mask, audio_inputs, audio_mask)
         mean = self.fused_output_layers(fused_hidden_states)
         log_var = self.var_head(fused_hidden_states)
-        return torch.cat([mean, log_var], dim=1)
+        return torch.cat([mean, log_var], dim=1), conf_t, conf_a
 
 
 def gaussian_nll_loss(pred, target):

@@ -38,8 +38,8 @@ h_fused    = conf_text * h_text + conf_audio * h_audio
 ## Dual Head Output
 
 ```
-Mean Head:  h_fused → Linear(300→1) → ŷ          (trained with MSE)
-Var Head:   h_fused → Linear(300→1) → log σ²    (frozen, then fine-tuned with Gaussian NLL)
+Mean Head:  h_fused → Linear(768→512) → ReLU → Linear(512→1) → ŷ    (trained with MSE)
+Var Head:   h_fused → Linear(768→512) → ReLU → Linear(512→1) → log σ²  (frozen, then fine-tuned with Gaussian NLL)
 ```
 
 **Why:** Var head is only activated during MVE fine-tuning (freeze backbone → train var head → unfreeze all). This avoids the well-known instability of training mean and variance jointly from scratch.

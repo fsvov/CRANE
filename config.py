@@ -38,4 +38,3 @@ VAL_SPLIT = 0.10
 # Save directory
 # ============================================
 SAVE_DIR = "./saved"
-os.makedirs(SAVE_DIR, exist_ok=True)

@@ -184,7 +184,7 @@ class BertSelfattLayer(nn.Module):
         self.output = BertAttOutput(config)
 
     def forward(self, input_tensor, attention_mask):
-        # Self attention attends to itself, thus keys and querys are the same (input_tensor).
+        # Self attention attends to itself, thus keys and queries are the same (input_tensor).
         self_output = self.self(input_tensor, input_tensor, attention_mask)
         attention_output = self.output(self_output, input_tensor)
         return attention_output

@@ -11,7 +11,9 @@ from utils.conformal import (SplitConformalPredictor, MCAdaptiveConformalPredict
                               MondrianConformalPredictor, sentiment_group,
                               mc_dropout_interval, ClassificationConformalPredictor,
                               classification_set_metrics, classification_conditional_by_sentiment,
-                              map_to_7class)
+                              map_to_7class,
+                              compute_coverage, compute_interval_width, compute_interval_score,
+                              conditional_coverage_by_sentiment, conditional_coverage_by_bucket)
 from collections import defaultdict
 from utils.visualization import save_all_figures
 
@@ -83,7 +85,7 @@ class EnTrainer():
             audio_mask = batch["audio_masks"].to(device)
             targets = batch["targets"].to(device).view(-1, 1)
             optimizer.zero_grad()  # To zero out the gradients.
-            outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+            outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
             loss = self.criterion(outputs, targets)
             total_loss += loss.item() * text_inputs.size(0)
             loss.backward()
@@ -105,7 +107,7 @@ class EnTrainer():
                 audio_inputs = batch["audio_inputs"].to(device)
                 audio_mask = batch["audio_masks"].to(device)
                 targets = batch["targets"].to(device).view(-1, 1)
-                outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+                outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
                 loss = self.criterion(outputs, targets)
                 total_loss += loss.item()*text_inputs.size(0)
                 y_pred.append(outputs.cpu())
@@ -138,7 +140,7 @@ class EnTrainer():
                     audio_inputs = batch["audio_inputs"].to(device)
                     audio_mask = batch["audio_masks"].to(device)
                     targets = batch["targets"].to(device).view(-1, 1)
-                    outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+                    outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
                     batch_preds.append(outputs.cpu())
                     if _ == 0:
                         batch_targets.append(targets.cpu())
@@ -165,7 +167,7 @@ class EnTrainer():
                 audio_mask = batch["audio_masks"].to(device)
                 targets = batch["targets"].to(device).view(-1, 1)
                 optimizer.zero_grad()
-                outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+                outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
                 loss = gaussian_nll_loss(outputs, targets)
                 loss.backward()
                 optimizer.step()
@@ -197,7 +199,7 @@ class EnTrainer():
                         text_inputs = torch.ones_like(text_inputs)
                         text_mask = torch.zeros_like(text_mask)
 
-                    outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+                    outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
                     batch_preds.append(outputs.cpu())
                     if _ == 0:
                         batch_targets.append(targets.cpu())
@@ -221,7 +223,7 @@ class EnTrainer():
                 audio_inputs = batch["audio_inputs"].to(device)
                 audio_mask = batch["audio_masks"].to(device)
                 targets = batch["targets"].to(device).view(-1, 1)
-                outputs = model(text_inputs, text_mask, audio_inputs, audio_mask)
+                outputs, _, _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
                 means.append(outputs[:, 0:1].cpu())
                 stds.append(torch.exp(outputs[:, 1:2] / 2).cpu())
                 truths.append(targets.cpu())
@@ -402,7 +404,6 @@ def EnRun(config):
     print("-" * 75)
 
     def _row(label, yt, yp, lo, up, a=0.10):
-        from utils.conformal import compute_coverage, compute_interval_width, compute_interval_score
         cov = compute_coverage(yt.flatten(), lo.flatten(), up.flatten())
         aw, mw = compute_interval_width(lo.flatten(), up.flatten())
         sc = compute_interval_score(yt.flatten(), lo.flatten(), up.flatten(), a)
@@ -456,7 +457,6 @@ def EnRun(config):
         ac.calibrate(y_c_sub, y_p_sub, s_sub)
         al, au = ac.predict(y_pred_test, mc_std_test, 0.10)
 
-        from utils.conformal import compute_coverage, compute_interval_width
         scov, sw, _ = compute_coverage(y_true_test.flatten(), sl.flatten(), su.flatten()), *compute_interval_width(sl.flatten(), su.flatten())
         acov, aw, amw = compute_coverage(y_true_test.flatten(), al.flatten(), au.flatten()), *compute_interval_width(al.flatten(), au.flatten())
         print(f"{n:>6}  {scov:>10.4f}  {sw:>10.4f}  {acov:>10.4f}  {aw:>10.4f}  {amw:>10.4f}")
@@ -479,7 +479,6 @@ def EnRun(config):
     cp_text = MCAdaptiveConformalPredictor()
     cp_text.calibrate(y_true_cal, yp_text, std_text)
     tl, tu = cp_text.predict(yp_text_t, std_text_t, 0.10)
-    from utils.conformal import compute_coverage, compute_interval_width
     t_cov = compute_coverage(y_true_test.flatten(), tl.flatten(), tu.flatten())
     t_aw, t_mw = compute_interval_width(tl.flatten(), tu.flatten())
 
@@ -525,9 +524,9 @@ def EnRun(config):
             audio_inputs = batch["audio_inputs"].to(device)
             audio_mask = batch["audio_masks"].to(device)
             targets = batch["targets"].to(device).view(-1, 1)
-            _ = model(text_inputs, text_mask, audio_inputs, audio_mask)
-            ct = model.ubi_gated_model._last_conf_text.cpu().numpy()
-            ca = model.ubi_gated_model._last_conf_audio.cpu().numpy()
+            _, ct, ca = model(text_inputs, text_mask, audio_inputs, audio_mask)
+            ct = ct.cpu().numpy()
+            ca = ca.cpu().numpy()
             conf_text_vals.append(ct)
             conf_audio_vals.append(ca)
             conf_labels.append(targets.cpu().numpy())
@@ -594,7 +593,6 @@ def EnRun(config):
             print(ConformalMetrics.format_results(y_true_test, ens_mean_test, lower, upper, alpha, label="ens"))
 
         # Comparison: MC Dropout vs Ensemble
-        from utils.conformal import compute_coverage, compute_interval_width
         el, eu = ens_cp.predict(ens_mean_test, ens_std_test, 0.10)
         e_cov = compute_coverage(y_true_test.flatten(), el.flatten(), eu.flatten())
         e_aw, e_mw = compute_interval_width(el.flatten(), eu.flatten())
@@ -652,7 +650,6 @@ def EnRun(config):
     # =====================================================
     # Collect visualization data
     # =====================================================
-    from utils.conformal import compute_coverage, compute_interval_width, compute_interval_score
 
     viz = {}
 
@@ -739,7 +736,6 @@ def EnRun(config):
 
     # --- Figure 5: Conditional coverage ---
     adapt_lo, adapt_up = adaptive_cp.predict(y_pred_test, mc_std_test, 0.10)
-    from utils.conformal import conditional_coverage_by_sentiment, conditional_coverage_by_bucket
     sent_cond = conditional_coverage_by_sentiment(y_true_test, y_pred_test, adapt_lo, adapt_up)
     buck_cond = conditional_coverage_by_bucket(y_pred_test, y_true_test, adapt_lo, adapt_up)
     viz['conditional_coverage'] = (sent_cond, buck_cond)
