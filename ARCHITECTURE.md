@@ -5,11 +5,11 @@ Design decisions and rationale for the Conformal Reliable Augmented Neural Frame
 ## Data Split: Plan C
 
 ```
-Full MOSI (2199 samples)
-├── Train: 55%  (～1209, augmentation ON)
-├── Cal:   10%  (～229, from val partition, augmentation OFF)
-├── ES:     5%  (～110, from train partition, augmentation OFF)
-└── Test:  25%  (～550, augmentation OFF)
+Full MOSI (2199 samples, pre-defined MOSI train/valid/test splits)
+├── Train: ～53% (～1174, from MOSI train, augmentation ON, after ES removal)
+├── Cal:   ～10% (～229,  = MOSI valid,   augmentation OFF)
+├── ES:    ～5%  (～110, ⊂ MOSI train,    augmentation OFF)
+└── Test:  ～31% (～686,  = MOSI test,    augmentation OFF)
 ```
 
 **Why Plan C (not Plan A or B):**
